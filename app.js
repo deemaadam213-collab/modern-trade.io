@@ -1,5 +1,5 @@
-/* ECUMT 3-01 — shared UI: theme, language, session nav, exam answer persistence */
-import { readSession, clearSession, api } from "./api-client.js";
+/* ECUMT 3-01 — shared UI: theme, language, quiz interactions */
+import { hasSchoolAdminRole, loadStudentProgress, saveStudentProgress, signOutStudent } from "./supabase-client.js";
 
 (async function () {
   "use strict";
@@ -8,26 +8,26 @@ import { readSession, clearSession, api } from "./api-client.js";
     ar: {
       brand_title: "المفاهيم الأساسية لبيئة التجارة الحديثة",
       nav_outcomes: "النواتج",
+      nav_quiz: "التقييم الذاتي",
       nav_login: "دخول",
-      nav_signup: "حساب جديد",
-      nav_profile: "حسابي",
-      nav_admin: "لوحة المعلم",
+      nav_signup: "حساب طالب",
       footer_made: 'صُنع بواسطة <span class="footer__name">آدم محمد</span>',
       footer_super: "تحت إشراف ميس نسمة، ميس يارا وميس نرمين",
       hero_chip: "وحدة دراسية — الصف الأول / فني تجارة حديثة",
       hero_title: "المفاهيم الأساسية لبيئة التجارة الحديثة",
-      hero_sub: "نواتج التعلم من الجدارة ECUMT 3-01 — ادرس كل ناتج في صفحته الخاصة من المحتوى المأخوذ من الكتاب، وحل اختبار الناتج في آخر الصفحة. سجّل حسابك لتحفظ إجاباتك ومتابعة درجاتك.",
+      hero_sub: "نواتج التعلم من الجدارة ECUMT 3-01 — اقرأ كل ناتج ومتطلبات الدليل والإثبات الخاصة به، ثم اختبر نفسك في صفحة التقييم الذاتي.",
       hero_cta1: "استعرض النواتج",
-      hero_cta2: "ابدأ الدراسة والاختبار",
+      hero_cta2: "حل التقييمات الذاتية",
       out_kicker: "نواتج التعلم",
       out_title: "نواتج التعلم في الوحدة",
-      out_lede: "لكل ناتج صفحة خاصة: الشرح الكامل من الكتاب ثم «متطلبات الدليل والإثبات» واختبار التقويم الذاتي في نهاية الصفحة.",
+      out_lede: "لكل ناتج: العنوان الرئيسي ثم «متطلبات الدليل والإثبات» التي توضح ما يُتوقع منك معرفته وتطبيقه.",
       req_title: "متطلبات الدليل والإثبات",
-      card_go: "افتح صفحة الناتج",
+      req_title2: "متطلبات الدليل والإثبات",
+      req_title3: "متطلبات الدليل والإثبات",
       o1_title: "يتعرف على تقسيمات قطاع التجارة الحديثة",
-      o1_r1: "يتعرَّف على مختلف القطاعات الفرعية ضمن صناعة البيع بالتجزة الحديثة وفقًا لمفهوم الهياكل التنظيمية في المؤسسات.",
+      o1_r1: "يتعرَّف على مختلف القطاعات الفرعية ضمن صناعة البيع بالتجارة الحديثة وفقًا لمفهوم الهياكل التنظيمية في المؤسسات.",
       o1_r2: "يُطابق القطاعات الفرعية بما يناسب منظومة العمل في قطاع التجارة الحديثة.",
-      o1_r3: "يتعرف على الأقسام الوظيفية التشغيلية المختلفة في متجر البيع بالتجزئة الحديثة جنبًا إلى جنب مع الغرض الرئيسي من كل منها.",
+      o1_r3: "يتعرف على الأقسام الوظيفية التشغيلية المختلفة في متجر البيع بالتجارة الحديثة جنبًا إلى جنب مع الغرض الرئيسي من كل منها.",
       o1_r4: "يتعرَّف على الإدارات الداعمة ووظائفها طبقًا لمفهوم الهياكل التنظيمية في المؤسسات والقواعد الأساسية بالعمل بالمتجر.",
       o1_r5: "يتعرَّف على أصحاب المصلحة بالمؤسسة وفقًا لآليات التعامل بهذه الصناعة.",
       o2_title: "يحدد طبيعة السوق المستهدف للمتجر",
@@ -38,20 +38,19 @@ import { readSession, clearSession, api } from "./api-client.js";
       o3_title: "ينفذ عملية متابعة تدفُّق المخزون والمبيعات من خلال عمليات التجارة الحديثة",
       o3_r1: "يستعلم عن تدفق المخزون من خلال البرامج المتخصصة.",
       o3_r2: "يتعرف على تأثير الوظيفة على الآخرين في المؤسسة من حيث الأنظمة الأساسية والأنظمة الفرعية.",
-      op1_kicker: "الناتج الأول",
-      op2_kicker: "الناتج الثاني",
-      op3_kicker: "الناتج الثالث",
-      op_req_lede: "متطلبات الدليل والإثبات لهذا الناتج:",
-      exam_kicker: "اختبار الناتج",
-      exam_title: "اختبار التقويم الذاتي",
-      exam_sub: "أجب عن أسئلة هذا الناتج في مكان الحل؛ الإجابة تُحفظ تلقائيًا في حسابك، ويعرضها المعلم لتقييمها.",
-      meter_open: "أسئلة هذا الناتج المُجابة",
+      quiz_chip: "6 تقييمات ذاتية — من كتيّب التقويمات 2026",
+      quiz_title: "التقييمات الذاتية",
+      quiz_sub: "اكتب إجابتك في مكان الحل أسفل كل سؤال، وحفظك تلقائي في المتصفح. أسئلة صح وخطأ تعطيك نتيجة فورية.",
+      meter_open: "الأسئلة المفتوحة المُجابة",
       print_btn: "طباعة إجاباتي",
-      ph_answer: "اكتب إجابتك هنا...",
-      save_note_guest: "إجاباتك تُحفظ في هذا المتصفح فقط — سجّل حسابك لتحفظها وتُقيَّم من المعلم.",
-      save_note_saved: "تم حفظ إجاباتك في حسابك.",
-      save_note_saving: "جارٍ حفظ إجاباتك...",
-      save_note_error: "تعذّر الحفظ في السيرفر — سيُعاد المحاولة مع الكتابة القادمة.",
+      g1_title: "التقييم الذاتي الأول",
+      g2_title: "التقييم الذاتي الثاني",
+      g3_title: "التقييم الذاتي الثالث",
+      g4_title: "التقييم الذاتي الرابع",
+      g5_title: "التقييم الذاتي الخامس",
+      g6_title: "التقييم الذاتي السادس",
+      g_open: "أسئلة مفتوحة",
+      g_tf: "ضع علامة صح أو خطأ",
       q1: "1) ما معنى التجارة الحديثة؟",
       q2: "2) اذكر تقسيمات الشركات التجارية؟",
       q3: "3) اذكر أنواع تجارة التجزئة وفقًا لطبيعة المتجر؟",
@@ -64,30 +63,48 @@ import { readSession, clearSession, api } from "./api-client.js";
       q10: "1) اكتب ما تعرفه عن عناصر البيع السبعة 7Ps؟",
       q11: "2) اذكر تأثير عناصر البيع الأربعة على التسويق للمنظومة؟",
       q12: "3) اذكر تأثير الموظف في زيادة البيع وخفض قيمة المشتريات؟",
-      print_h1: "إجاباتي — المفاهيم الأساسية لبيئة التجارة الحديثة ECUMT 3-01",
+      s5q1: "1) هيئة سلامة الغذاء هي الجهة المسؤولة عن تحصيل الضرائب الواجب سدادها.",
+      s5q2: "2) لا يحتاج متجر بيع التجزئة إلى الحصول على التراخيص أو التسجيل القانوني.",
+      s5q3: "3) تهدف قوانين حماية المستهلك إلى حماية حقوق المستهلكين وتضمن المنافسة التجارية العادلة.",
+      s5q4: "4) تهدف تعليمات سلامة الغذاء إلى حماية المستهلك من الإصابة بالأمراض المنقولة بواسطة الغذاء أو الإصابة بالتسمم الغذائي.",
+      s6q1: "1) تُعتبر العناصر المؤثرة في الربحية: المبيعات والمشتريات والهالك.",
+      s6q2: "2) يتم حساب متوسط المخزون عن طريق جمع قيم المخزون لكل شهر ثم قسمتها على عدد تلك الشهور.",
+      s6q3: "3) التكاليف المتغيرة هي تكلفة العمالة أو المواد أو النفقات العامة التي تتغير وفقًا للتغير في حجم وحدات الإنتاج.",
+      s6q4: "4) يُعرَّف الانكماش بأنه مقدار الزيادة في المنتجات المجردة.",
+      s6q5: "5) صافي الربح = المبيعات − المشتريات فقط.",
+      btn_true: "صح",
+      btn_false: "خطأ",
+      ph_answer: "اكتب إجابتك هنا...",
+      fb_ok: "إجابة صحيحة، أحسنت!",
+      fb_bad_true: "إجابة خاطئة — الإجابة الصحيحة: صح.",
+      fb_bad_false: "إجابة خاطئة — الإجابة الصحيحة: خطأ.",
+      score_label: "نتيجتك في هذا التقييم:",
+      print_h1: "إجاباتي — التقييمات الذاتية ECUMT 3-01",
       print_open: "الأسئلة المفتوحة",
+      print_tf: "أسئلة صح وخطأ",
       print_empty: "(لم تُكتب إجابة بعد)",
-      print_your: "إجابتك:"
+      print_your: "إجابتك:",
+      print_result: "نتيجتك:"
     },
     en: {
       brand_title: "Basic Concepts of the Modern Commerce Environment",
       nav_outcomes: "Outcomes",
-      nav_login: "Log in",
-      nav_signup: "Sign up",
-      nav_profile: "My account",
-      nav_admin: "Teacher panel",
+      nav_quiz: "Self-assessment",
+      nav_login: "Student login",
+      nav_signup: "Student account",
       footer_made: 'Made by <span class="footer__name">Adam Mohamed</span>',
       footer_super: "Under the supervision of Ms. Nesma, Ms. Yara & Ms. Nermin",
       hero_chip: "Study unit — Grade 1 / Modern Commerce Technician",
       hero_title: "Basic Concepts of the Modern Commerce Environment",
-      hero_sub: "The learning outcomes of unit ECUMT 3-01 — study each outcome on its own page with content from the book, then take the outcome's self-assessment exam at the end. Sign up to save your answers and track your grades.",
+      hero_sub: "The learning outcomes of unit ECUMT 3-01 — read each outcome with its evidence requirements, then test yourself on the self-assessment page.",
       hero_cta1: "Browse the outcomes",
-      hero_cta2: "Start studying & testing",
+      hero_cta2: "Solve the self-assessments",
       out_kicker: "Learning outcomes",
       out_title: "The unit's learning outcomes",
-      out_lede: "Each outcome has its own page: the full explanation from the book, the evidence requirements, and the self-assessment exam at the end of the page.",
+      out_lede: "Each outcome shows its main title followed by the evidence requirements — what you are expected to know and apply.",
       req_title: "Evidence requirements",
-      card_go: "Open the outcome page",
+      req_title2: "Evidence requirements",
+      req_title3: "Evidence requirements",
       o1_title: "Recognizes the divisions of the modern commerce sector",
       o1_r1: "Identifies the different sub-sectors within the modern commerce retail industry according to the concept of organizational structures in institutions.",
       o1_r2: "Matches sub-sectors to the work system of the modern commerce sector.",
@@ -102,20 +119,19 @@ import { readSession, clearSession, api } from "./api-client.js";
       o3_title: "Tracks the flow of inventory and sales through modern commerce operations",
       o3_r1: "Queries inventory flow through specialized software.",
       o3_r2: "Recognizes the effect of each function on others in the organization in terms of core systems and subsystems.",
-      op1_kicker: "Outcome 1",
-      op2_kicker: "Outcome 2",
-      op3_kicker: "Outcome 3",
-      op_req_lede: "Evidence requirements for this outcome:",
-      exam_kicker: "Outcome exam",
-      exam_title: "Self-assessment exam",
-      exam_sub: "Answer this outcome's questions below; answers are saved automatically to your account so your teacher can review and grade them.",
-      meter_open: "Questions answered in this outcome",
+      quiz_chip: "6 self-assessments — from the 2026 assessment booklet",
+      quiz_title: "Self-Assessments",
+      quiz_sub: "Write your answer in the answer space under each question; your work is saved automatically in the browser. True/False questions give instant feedback.",
+      meter_open: "Open questions answered",
       print_btn: "Print my answers",
-      ph_answer: "Write your answer here...",
-      save_note_guest: "Answers are saved in this browser only — sign up to save them to your account and have them graded.",
-      save_note_saved: "Your answers were saved to your account.",
-      save_note_saving: "Saving your answers...",
-      save_note_error: "Could not reach the server — will retry on your next edit.",
+      g1_title: "Self-Assessment 1",
+      g2_title: "Self-Assessment 2",
+      g3_title: "Self-Assessment 3",
+      g4_title: "Self-Assessment 4",
+      g5_title: "Self-Assessment 5",
+      g6_title: "Self-Assessment 6",
+      g_open: "Open questions",
+      g_tf: "True or False",
       q1: "1) What is the meaning of modern commerce?",
       q2: "2) State the classifications of commercial companies.",
       q3: "3) State the types of retail trade according to the nature of the store.",
@@ -128,10 +144,28 @@ import { readSession, clearSession, api } from "./api-client.js";
       q10: "1) Write what you know about the seven selling elements (7Ps).",
       q11: "2) State the effect of the four selling elements on marketing the system.",
       q12: "3) State the effect of the employee on increasing sales and reducing the value of purchases.",
-      print_h1: "My Answers — ECUMT 3-01 Basic Concepts of Modern Commerce",
+      s5q1: "1) The Food Safety Authority is the body responsible for collecting due taxes.",
+      s5q2: "2) A retail store does not need to obtain licenses or legal registration.",
+      s5q3: "3) Consumer protection laws aim to protect consumers' rights and ensure fair commercial competition.",
+      s5q4: "4) Food safety instructions aim to protect consumers from foodborne diseases and food poisoning.",
+      s6q1: "1) The elements affecting profitability are: sales, purchases, and spoilage.",
+      s6q2: "2) Average inventory is calculated by adding the inventory values of each month then dividing by the number of those months.",
+      s6q3: "3) Variable costs are the cost of labor, materials, or overheads that change according to the change in production unit volume.",
+      s6q4: "4) Shrinkage is defined as the amount of increase in inventoried products.",
+      s6q5: "5) Net profit = Sales − Purchases only.",
+      btn_true: "True",
+      btn_false: "False",
+      ph_answer: "Write your answer here...",
+      fb_ok: "Correct answer, well done!",
+      fb_bad_true: "Wrong answer — the correct answer is: True.",
+      fb_bad_false: "Wrong answer — the correct answer is: False.",
+      score_label: "Your score in this assessment:",
+      print_h1: "My Answers — ECUMT 3-01 Self-Assessments",
       print_open: "Open questions",
+      print_tf: "True/False questions",
       print_empty: "(no answer written yet)",
-      print_your: "Your answer:"
+      print_your: "Your answer:",
+      print_result: "Your result:"
     }
   };
 
@@ -158,10 +192,8 @@ import { readSession, clearSession, api } from "./api-client.js";
     if (langBtn) langBtn.textContent = lang === "ar" ? "EN" : "عربي";
     try { localStorage.setItem("ecumt-lang", lang); } catch (e) {}
     updateMeter();
-    if (lastSaveState) setSaveNote(lastSaveState);
+    refreshTfTexts();
   }
-
-  var lastSaveState = null;
 
   var themeBtn = document.getElementById("themeBtn");
   if (themeBtn) {
@@ -180,66 +212,49 @@ import { readSession, clearSession, api } from "./api-client.js";
     });
   }
 
-  /* ---------- session-aware topbar ---------- */
-  var session = readSession();
-  if (session) {
-    document.querySelectorAll("[data-student-name]").forEach(function (el) { el.textContent = session.user.username; });
+  /* ---------- open-question persistence ---------- */
+  var studentState = await loadStudentProgress();
+  var student = studentState.user;
+  var studentSuffix = student ? ":" + student.id : "";
+  var STORE_KEY = "ecumt-answers" + studentSuffix;
+  var TF_KEY = "ecumt-tf" + studentSuffix;
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch (e) { store = {}; }
+  store = Object.assign({}, store, studentState.answers || {});
+
+  if (student) {
+    var studentName = student.user_metadata?.full_name || student.email?.split("@")[0] || "طالب";
+    document.querySelectorAll("[data-student-name]").forEach(function (el) { el.textContent = studentName; });
     document.querySelectorAll("[data-account-nav], [data-logout]").forEach(function (el) { el.hidden = false; });
     document.querySelectorAll("[data-guest-nav]").forEach(function (el) { el.hidden = true; });
-    if (session.user.role === "teacher") {
+    if (await hasSchoolAdminRole(student.id)) {
       document.querySelectorAll("[data-admin-nav]").forEach(function (el) { el.hidden = false; });
     }
+  }
+
+  function persistProgress() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
+    try { localStorage.setItem(TF_KEY, JSON.stringify(tfStore)); } catch (e) {}
+    if (!student) return;
+    window.clearTimeout(persistProgress.timer);
+    persistProgress.timer = window.setTimeout(function () {
+      saveStudentProgress(store, tfStore).then(function (result) {
+        if (result.error) console.warn("تعذرت مزامنة تقدم الطالب مع Supabase:", result.error.message || result.error);
+      });
+    }, 700);
   }
 
   document.querySelectorAll("[data-logout]").forEach(function (button) {
     button.addEventListener("click", async function () {
       button.disabled = true;
-      try { await api.logOut(); } catch (e) {}
-      clearSession();
+      await signOutStudent();
       window.location.href = "index.html";
     });
   });
 
-  /* ---------- exam answer persistence ---------- */
   var inputs = Array.prototype.slice.call(document.querySelectorAll("[data-store]"));
-  var STORE_KEY = "ecumt-answers" + (session ? ":" + session.user.id : "");
-  var store = {};
-  try { store = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch (e) { store = {}; }
-
-  var saveNote = document.querySelector("[data-save-note]");
   var meterFill = document.getElementById("openFill");
   var openCount = document.getElementById("openCount");
-
-  function setSaveNote(state) {
-    if (!saveNote) return;
-    lastSaveState = state;
-    var key = session ? "save_note_" + state : "save_note_guest";
-    saveNote.textContent = t(key);
-    saveNote.dataset.type = state;
-  }
-
-  function pageEntries() {
-    var answers = {};
-    inputs.forEach(function (el) {
-      answers[el.getAttribute("data-store")] = el.value.slice(0, 4000);
-    });
-    return answers;
-  }
-
-  function persistProgress() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-    setSaveNote("saved");
-    if (!session) return;
-    setSaveNote("saving");
-    window.clearTimeout(persistProgress.timer);
-    persistProgress.timer = window.setTimeout(function () {
-      api.saveAnswers(pageEntries()).then(function () {
-        setSaveNote("saved");
-      }).catch(function () {
-        setSaveNote("error");
-      });
-    }, 700);
-  }
 
   function updateMeter() {
     if (!meterFill || !openCount) return;
@@ -251,7 +266,7 @@ import { readSession, clearSession, api } from "./api-client.js";
 
   inputs.forEach(function (el) {
     var id = el.getAttribute("data-store");
-    if (store[id] && !el.value) el.value = store[id];
+    if (store[id]) el.value = store[id];
     el.addEventListener("input", function () {
       if (el.value.trim().length > 0) store[id] = el.value;
       else delete store[id];
@@ -260,28 +275,81 @@ import { readSession, clearSession, api } from "./api-client.js";
     });
   });
 
-  if (session && inputs.length > 0) {
-    try {
-      var remote = await api.answers();
-      if (remote && remote.answers) {
-        var loaded = 0;
-        inputs.forEach(function (el) {
-          var id = el.getAttribute("data-store");
-          if (remote.answers[id] && !el.value) {
-            el.value = remote.answers[id];
-            store[id] = remote.answers[id];
-            loaded++;
-          }
-        });
-        if (loaded > 0) {
-          try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-          updateMeter();
-        }
-      }
-    } catch (e) {}
+  /* ---------- true / false ---------- */
+  var tfStore = {};
+  try { tfStore = JSON.parse(localStorage.getItem(TF_KEY) || "{}"); } catch (e) { tfStore = {}; }
+  tfStore = Object.assign({}, tfStore, studentState.tfAnswers || {});
+
+  function tfStatus(block) {
+    var correct = block.getAttribute("data-answer") === "true";
+    return { correct: correct, expected: correct ? "true" : "false" };
   }
 
-  setSaveNote("guest");
+  function scoreGroups() {
+    [5, 6].forEach(function (g) {
+      var scoreEl = document.querySelector('[data-score-for="' + g + '"]');
+      if (!scoreEl) return;
+      var blocks = Array.prototype.slice.call(
+        document.querySelectorAll('.group:nth-of-type(' + g + ') .tf')
+      );
+      var done = 0, ok = 0;
+      blocks.forEach(function (b) {
+        var id = b.getAttribute("data-tf");
+        if (tfStore[id]) {
+          done++;
+          if (tfStore[id] === b.getAttribute("data-answer")) ok++;
+        }
+      });
+      scoreEl.textContent = done === 0 ? "" : t("score_label") + " " + ok + "/" + blocks.length;
+    });
+  }
+
+  function refreshTfTexts() {
+    document.querySelectorAll(".tf").forEach(function (block) {
+      var id = block.getAttribute("data-tf");
+      var fb = block.querySelector(".tf__fb");
+      var picked = tfStore[id];
+      if (!picked) {
+        if (fb) { fb.textContent = ""; fb.className = "tf__fb"; }
+        return;
+      }
+      var correct = block.getAttribute("data-answer") === "true";
+      var okPick = picked === block.getAttribute("data-answer");
+      if (fb) {
+        fb.textContent = okPick ? t("fb_ok") : (correct ? t("fb_bad_true") : t("fb_bad_false"));
+        fb.className = "tf__fb " + (okPick ? "ok" : "bad");
+      }
+    });
+    scoreGroups();
+  }
+
+  document.querySelectorAll(".tf").forEach(function (block) {
+    var id = block.getAttribute("data-tf");
+    block.querySelectorAll(".tf__btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var picked = btn.getAttribute("data-val");
+        tfStore[id] = picked;
+        persistProgress();
+        block.classList.add("is-done");
+        var okPick = picked === block.getAttribute("data-answer");
+        block.querySelectorAll(".tf__btn").forEach(function (b) {
+          b.classList.remove("is-picked-ok", "is-picked-bad");
+          if (b === btn) b.classList.add(okPick ? "is-picked-ok" : "is-picked-bad");
+        });
+        refreshTfTexts();
+      });
+    });
+    if (tfStore[id]) {
+      block.classList.add("is-done");
+      var okPick2 = tfStore[id] === block.getAttribute("data-answer");
+      block.querySelectorAll(".tf__btn").forEach(function (b) {
+        if (b.getAttribute("data-val") === tfStore[id]) {
+          b.classList.add(okPick2 ? "is-picked-ok" : "is-picked-bad");
+        }
+      });
+    }
+  });
+  refreshTfTexts();
 
   /* ---------- print ---------- */
   var printBtn = document.getElementById("printBtn");
@@ -298,6 +366,23 @@ import { readSession, clearSession, api } from "./api-client.js";
         html += "<h3>" + esc(qText) + "</h3>";
         html += "<p><strong>" + t("print_your") + "</strong></p>";
         html += '<div class="ans">' + esc(ans) + "</div>";
+      });
+      html += "<h2>" + t("print_tf") + "</h2>";
+      document.querySelectorAll(".tf").forEach(function (block) {
+        var id = block.getAttribute("data-tf");
+        var qEl = block.querySelector(".tf__text");
+        var qText = qEl ? qEl.textContent : id;
+        var picked = tfStore[id];
+        var correct = block.getAttribute("data-answer") === "true";
+        var result = "";
+        if (!picked) result = t("print_empty");
+        else {
+          var okPick = picked === block.getAttribute("data-answer");
+          result = (picked === "true" ? t("btn_true") : t("btn_false")) +
+            " — " + (okPick ? t("fb_ok") : (correct ? t("fb_bad_true") : t("fb_bad_false")));
+        }
+        html += "<h3>" + esc(qText) + "</h3>";
+        html += "<p><strong>" + t("print_result") + "</strong> " + esc(result) + "</p>";
       });
       area.innerHTML = html;
       window.print();
